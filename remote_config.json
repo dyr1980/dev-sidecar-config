@@ -7,8 +7,8 @@
     metaInfo: {
       // 元数据就放在这里了
       id: "official", // 配置id：id区分大小写，只能带有大小写字母、数字、点号与横杠，应当具有说明作用（所以不许用一串数字/乱码代替）
-      version: 202611021500, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
-      updateLog: "以新版为基线，吸收旧版长处：新增 gist.github.com 拦截器；Docker Hub 补 docker.io/registry-1/index.docker.io/cloud·go·goto·id.docker.com（goto.docker.com SNI）；Web Archive 拦截与预设IP；VSCode *.vsassets.io DNS映射；Wikipedia 改用 mediawiki.org 作 SNI；大量 sni=baidu.com 站点补 unVerifySsl；ECH 扩充 matrix/mod.io/itch.io/patreon/substack/medium/v2ex/auth.docker.io/hub.docker.com/openai.com/civitai.red/grok.com/x.ai，x.com 改用 ^(.+\\.)?x\\.com$；nat64 增加 *openai.com；保留新版 Steam/Reddit/测速域名/help 等。",
+      version: 202611031800, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
+      updateLog: "以本人配置为基线，吸收对方长处并修 bug：修 cf-DoH 的 sni（cf→baidu.com）；补 gist.github.com 拦截器与预设IP（含 140.82.121.3、4.237.22.38、20.200.245.247、140.82.116.3/4）；补 Docker www/login/download/hub/*.docker.com 自 SNI 与兜底；补 dns.mapping/familyMapping 的 github/docker/electron/amazonaws/yarnpkg/cloudfront/cloudflare/shields/vuepress/docmirror/v2ex/pypi/duckduckgo 等映射（docker 在 mapping 与 familyMapping 均用 *docker* 宽匹配）；补 *.gstatic.com/*.googleapis.com 的 quad9-ip 映射；补 Web Archive 预设IP；Steam 增加 ^(store|checkout).steampowered.com$ 精确规则；ECH 增加 sharedConfig 共享配置；nat64 保留 chatgpt/openai；修正 clientconfig.akamai.steamstatic.com 带前导空格的 IP；测速域名恢复 12 个（含 steam/epic）；其余以本人新版为准。",
       // dev-sidecar从2.0.2开始内置的配置是internal，这里是official
       // 第三方配置应使用Java风格id,即发布网站域名的倒序，但严禁使用com.example之类的烂大街id（com.example保留为示范用途）
       // 同理禁止使用com.github/com.gitee/com.gitcode/io.github等大概率托管多个配置的网站域名倒序
@@ -78,18 +78,6 @@
           sni: "baidu.com",
           desc: "图片、JS文件、CSS文件，缓存1年",
         },
-        ".*.backup": {
-          desc: "github.com域名下，该请求已经不存在，此配置暂时先备份掉。",
-          proxy: "github.com",
-          sni: "baidu.com",
-          responseReplace: {
-            headers: {
-              "access-control-allow-origin": "*",
-              "cross-origin-resource-policy": "cross-origin",
-              "set-cookie": "[remove]",
-            },
-          },
-        },
       },
       "opengraph.githubassets.com": {
         "^/(([^/]+/){3}issues/\\d+)?(\\?.*)?$": {
@@ -125,7 +113,7 @@
           sni: "baidu.com",
         },
       },
-      // 从旧版吸收：gist.github.com 独立拦截器（旧版有，新版此前只在预设IP里）
+      // 从对方吸收：gist.github.com 独立拦截器
       "gist.github.com": {
         ".*": {
           sni: "baidu.com",
@@ -214,7 +202,7 @@
         },
       },
       // Docker Hub
-      // 从旧版吸收：docker.io 及 registry/index、cloud/go/goto/id 子域新式拦截
+      // 从对方吸收：docker.io 及 registry/index、cloud/go/goto/id 子域
       "docker.io": {
         ".*": {
           sni: "baidu.com",
@@ -233,6 +221,7 @@
           unVerifySsl: true,
         },
       },
+      // 从对方吸收：www/login/download/hub/*.docker.com 自 SNI 与兜底
       "www.docker.com": {
         ".*": {
           sni: "www.docker.com", // 配置它自己是为了覆盖 *.docker.com 中的SNI配置，此配置优先级更高
@@ -420,6 +409,12 @@
           desc: "steam社区数据不能也不需调整sni,直接直连",
         },
       },
+      // 从对方吸收：精确的商店/结算拦截（与下方宽匹配并存，精确规则优先）
+      "^(store|checkout).steampowered.com$": {
+        ".*": {
+          sni: "baidu.com",
+        },
+      },
       "*.steampowered.com": {
         ".*": {
           sni: "baidu.com",
@@ -439,6 +434,12 @@
         },
       },
       //OneDrive
+      "*onedrive.live.com": {
+        ".*": {
+          sni: "baidu.com",
+          unVerifySsl: true,
+        },
+      },
       //Dropbox
       "*dropbox.com": {
         ".*": {
@@ -472,7 +473,7 @@
           sni: "claude.ai",
         },
       },
-      // Web Archive（从旧版吸收）
+      // Web Archive（从对方吸收：拦截器 + 预设IP）
       "*archive.org": {
         ".*": {
           sni: "baidu.com",
@@ -589,10 +590,12 @@
         "140.82.121.3": false,
         "140.82.121.4": false,
       },
+      // 从对方吸收：补 140.82.121.3、4.237.22.38、20.200.245.247、140.82.116.3/4，20.205.243.166 标 true
       "gist.github.com": {
         "20.27.177.113": true,
         "20.200.245.247": true,
-        "20.205.243.166": false,
+        "20.205.243.166": true,
+        "140.82.121.3": true,
         "140.82.116.3": true,
         "140.82.116.4": true,
         "4.237.22.38": true,
@@ -912,7 +915,7 @@
       "*.claude.ai": {
         "2a01:4f8:c2c:123f:64:5:a04f:680a": true,
       },
-      // Web Archive（从旧版吸收）
+      // Web Archive（从对方吸收：预设IP）
       "web-static.archive.org": {
         "207.241.237.2": true,
       },
@@ -944,6 +947,7 @@
           "server": "tls://dns.bebasid.com",
           "sni": "baidu.com",
         },
+        // 修正：原 "sni": "cf" 非法，改为 baidu.com
         "cf-DoH": {
           "server": "https://cloudflare-dns.com/dns-query",
           "sni": "baidu.com",
@@ -958,7 +962,9 @@
           "server": "https://rubyfish.cn/dns-query",
         },
       },
+      // docker 在 mapping 与 familyMapping 均用 *docker* 宽匹配（DoH 查询本身不会误伤解析结果；控族也一刀切）
       mapping: {
+        "*docker*": "cf-DoH",
         "*.xn--ngstr-lra8j.com": "bebasid",
         "*.googlevideo.com": "bebasid",
         "*.gvt1.com": "bebasid",
@@ -968,7 +974,6 @@
         "*.github.com": "cf-DoT",
         "*github*.com": "cf-DoT",
         "*.github.io": "cf-DoT",
-        "*.docker.com": "cf-DoT",
         "*.electronjs.org": "cf-DoT",
         "*.amazonaws.com": "cf-DoT",
         "*.yarnpkg.com": "cf-DoT",
@@ -993,7 +998,9 @@
         "*.vsassets.io": "cf-DoT",
       },
       // @since v2.0.2
+      // 与 mapping 对齐；docker 同样用 *docker* 宽匹配
       familyMapping: {
+        "*docker*": "4",
         "*.xn--ngstr-lra8j.com": "6",
         "*.googlevideo.com": "6",
         "*.gvt1.com": "6",
@@ -1003,7 +1010,6 @@
         "*.github.com": "4",
         "*github*.com": "4",
         "*.github.io": "4",
-        "*.docker.com": "4",
         "*.electronjs.org": "4",
         "*.amazonaws.com": "4",
         "*.yarnpkg.com": "4",
@@ -1021,7 +1027,7 @@
         "*.iubenda.com": "4",
         "*.brave.com": "4",
         "*duckduckgo.com": "4",
-        // 对应上面 mapping 里新增的两条（值与既有条目一致，用字符串）
+        // 对应上面 mapping 里的两条（值与既有条目一致，用字符串）
         "*.gstatic.com": "4",
         "*.googleapis.com": "4",
         // 与上面 dns.mapping 的 *.vsassets.io 对应
@@ -1109,6 +1115,10 @@
         enabled: true,
         use: true,
         publicName: "cloudflare-ech.com",
+        // 从对方吸收：随配置下发共享 ECH 配置（base64）。
+        // 需要 ECH 解析器才能实时获取，部分网络会重置 TLS，因此随配置下发；
+        // Cloudflare 会轮换，请随配置更新一起替换。
+        sharedConfig: "AEX+DQBBBAAgACD5ePjdqyD/98Ay87SkPKvxDV1OX57c8B6ad9YZLiBDbAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA=",
         cacheSize: 512,
         emptyTtl: 600000,
         minTtl: 60000,

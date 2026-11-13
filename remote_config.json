@@ -7,8 +7,8 @@
     metaInfo: {
       // 元数据就放在这里了
       id: "official", // 配置id：id区分大小写，只能带有大小写字母、数字、点号与横杠，应当具有说明作用（所以不许用一串数字/乱码代替）
-      version: 202611031800, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
-      updateLog: "以本人配置为基线，吸收对方长处并修 bug：修 cf-DoH 的 sni（cf→baidu.com）；补 gist.github.com 拦截器与预设IP（含 140.82.121.3、4.237.22.38、20.200.245.247、140.82.116.3/4）；补 Docker www/login/download/hub/*.docker.com 自 SNI 与兜底；补 dns.mapping/familyMapping 的 github/docker/electron/amazonaws/yarnpkg/cloudfront/cloudflare/shields/vuepress/docmirror/v2ex/pypi/duckduckgo 等映射（docker 在 mapping 与 familyMapping 均用 *docker* 宽匹配）；补 *.gstatic.com/*.googleapis.com 的 quad9-ip 映射；补 Web Archive 预设IP；Steam 增加 ^(store|checkout).steampowered.com$ 精确规则；ECH 增加 sharedConfig 共享配置；nat64 保留 chatgpt/openai；修正 clientconfig.akamai.steamstatic.com 带前导空格的 IP；测速域名恢复 12 个（含 steam/epic）；其余以本人新版为准。",
+      version: 202611121325, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
+      updateLog: "以官方配置为基线，吸收 gist/Docker/Web Archive/测速域名等增量；修正 steampowered 点号转义、Wikipedia 预设IP混入sni、gist 缺 verifyHost、akamai IP 前导空格等问题；补 cf-DoH 的 sni、docker 相关拦截与预设IP、DNS mapping/familyMapping、ECH sharedConfig 等；移除 hub.docker.com 的 sni:\"none\"，改由 *.docker.com 兜底。",
       // dev-sidecar从2.0.2开始内置的配置是internal，这里是official
       // 第三方配置应使用Java风格id,即发布网站域名的倒序，但严禁使用com.example之类的烂大街id（com.example保留为示范用途）
       // 同理禁止使用com.github/com.gitee/com.gitcode/io.github等大概率托管多个配置的网站域名倒序
@@ -113,11 +113,13 @@
           sni: "baidu.com",
         },
       },
-      // 从对方吸收：gist.github.com 独立拦截器
       "gist.github.com": {
         ".*": {
-          sni: "baidu.com",
-        },
+          "sni": "baidu.com",
+          // 用 baidu.com 的 SNI 敲门时，GitHub 边缘返回的是 github.com 的证书；
+          // 不声明 verifyHost 会按真实域名校验，报 ERR_TLS_CERT_ALTNAME_INVALID
+          "verifyHost": "github.com",
+        }
       },
       "*.gravatar.com": {
         ".*": {
@@ -192,36 +194,25 @@
           proxy: "www.recaptcha.net",
         },
       },
-      // Microsoft
-      "ms-sso.copilot.microsoft.com": {
-        ".*": {
-          sni: "microsoft.com", // 微软登录会奇怪跳转至此站点中转，防止卡登录
-          // 该域名 CNAME 到 prda.aadg.msidentity.com（微软 AAD），服务器返回的是 AAD 的证书，
-          // 里面没有 ms-sso.copilot.microsoft.com，故显式指定用 AAD 的域名校验证书
-          verifyHost: "graph.windows.net",
-        },
-      },
-      // Docker Hub
-      // 从对方吸收：docker.io 及 registry/index、cloud/go/goto/id 子域
+      //DockerHub
       "docker.io": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
       "^(registry-1|index)\\.docker\\.io$": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
       "^(cloud|go|goto|id)\\.docker\\.com$": {
         ".*": {
-          sni: "goto.docker.com",
+          "sni": "goto.docker.com",
           unVerifySsl: true,
         },
       },
-      // 从对方吸收：www/login/download/hub/*.docker.com 自 SNI 与兜底
       "www.docker.com": {
         ".*": {
           sni: "www.docker.com", // 配置它自己是为了覆盖 *.docker.com 中的SNI配置，此配置优先级更高
@@ -237,14 +228,19 @@
           sni: "download.docker.com", // 配置它自己是为了覆盖 *.docker.com 中的SNI配置，此配置优先级更高
         },
       },
-      "hub.docker.com": {
-        ".*": {
-          sni: "none",
-        },
-      },
+      // 已移除 hub.docker.com 的 sni:"none"，改由下方 *.docker.com 兜底
       "*.docker.com": {
         ".*": {
           sni: "www.docker.com",
+        },
+      },
+      // Microsoft
+      "ms-sso.copilot.microsoft.com": {
+        ".*": {
+          sni: "microsoft.com", // 微软登录会奇怪跳转至此站点中转，防止卡登录
+          // 该域名 CNAME 到 prda.aadg.msidentity.com（微软 AAD），服务器返回的是 AAD 的证书，
+          // 里面没有 ms-sso.copilot.microsoft.com，故显式指定用 AAD 的域名校验证书
+          verifyHost: "graph.windows.net",
         },
       },
       // Pixiv
@@ -324,10 +320,10 @@
           verifyHost: "huggingface.cn",
         },
       },
-      // Greasy Fork
+      //Greasy Fork
       "update.greasyfork.org": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
@@ -337,60 +333,59 @@
           sni: "vuejs.org",
         },
       },
-      // Z-lib
+      //Z-lib
       "*z-library.sk": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
-        },
+        }
       },
       "*z-lib.help": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
-        },
+        }
       },
-      // Wikipedia
-      // 从旧版吸收：用 mediawiki.org 作 SNI + unVerifySsl；预设IP沿用新版
+      //Wikipedia
       "^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions|wikibooks).org$": {
         ".*": {
           sni: "mediawiki.org",
           unVerifySsl: true,
         },
       },
-      "*w.wiki": {
+      "*w.wiki":{
         ".*": {
           sni: "mediawiki.org",
           unVerifySsl: true,
         },
       },
-      // Reddit
+      //Reddit
       "*reddit.com": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
       "*redditstatic.com": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
       "redd.it": {
         ".*": {
-          redirect: "www.reddit.com",
+          "redirect": "www.reddit.com",
         },
       },
       "*redd.it": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
       "*redditmedia.com": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
@@ -409,8 +404,7 @@
           desc: "steam社区数据不能也不需调整sni,直接直连",
         },
       },
-      // 从对方吸收：精确的商店/结算拦截（与下方宽匹配并存，精确规则优先）
-      "^(store|checkout).steampowered.com$": {
+      "^(store|checkout)\\.steampowered\\.com$": {
         ".*": {
           sni: "baidu.com",
         },
@@ -436,7 +430,7 @@
       //OneDrive
       "*onedrive.live.com": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
@@ -473,10 +467,10 @@
           sni: "claude.ai",
         },
       },
-      // Web Archive（从对方吸收：拦截器 + 预设IP）
+      //Web Archive
       "*archive.org": {
         ".*": {
-          sni: "baidu.com",
+          "sni": "baidu.com",
           unVerifySsl: true,
         },
       },
@@ -590,7 +584,6 @@
         "140.82.121.3": false,
         "140.82.121.4": false,
       },
-      // 从对方吸收：补 140.82.121.3、4.237.22.38、20.200.245.247、140.82.116.3/4，20.205.243.166 标 true
       "gist.github.com": {
         "20.27.177.113": true,
         "20.200.245.247": true,
@@ -622,13 +615,11 @@
         "185.199.109.133": true,
         "185.199.110.133": true,
       },
-      // Docker Hub
+      // Docker
       "hub.docker.com": {
         "144.34.172.106": true,
         "69.63.207.139": false,
-        // 疑似源站IP
         "47.236.233.96": false,
-        // 已失效的IP
         "54.156.14.194": null,
         "54.208.73.48": null,
         "100.29.167.200": null,
@@ -640,7 +631,6 @@
         "54.156.14.194": true,
         "54.208.73.48": true,
         "100.29.167.200": true,
-        // 已失效的IP
         "44.221.37.199": null,
         "52.44.227.212": null,
         "54.156.140.159": null,
@@ -711,19 +701,6 @@
           desc: "自动地区官方",
         },
       },
-      // "_google_backup":{
-      //   "8.137.102.117": flase, // 阿里云中转
-      //   "47.102.115.14":"true",
-      //   "194.87.31.227":"true",
-      //   "136.124.0.28":"true",
-      //   "136.124.0.29":"true",
-      //   "34.49.133.3":"true",
-      //   "142.251.189.206":"true",
-      //   "142.251.190.206":"true",
-      //   "172.217.204.206":"true",
-      //   "172.253.122.206":"true",
-      //   "38.180.33.93":"true"
-      // },
       // YouTube
       "*.youtube.com": {
         "8.137.102.117": false, // 阿里云中转
@@ -792,27 +769,27 @@
         "57.144.220.192": true,
         "57.144.216.192": true,
       },
-      // Z-lib
+      //Z-lib
       "*z-library.sk": {
         "176.123.7.105": true,
       },
       "*z-lib.help": {
         "176.123.7.105": true,
       },
-      // Wikipedia（修正新版混入 sni 的语法错误，改为纯 IP）
-      "^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions|wikibooks).org$": {
-        "208.80.153.224": true,
-        "185.15.58.224": true,
-      },
+      //Wikipedia
       "upload.wikimedia.org": {
         "208.80.153.240": true,
         "185.15.58.240": true,
       },
-      "*w.wiki": {
+      "^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions|wikibooks).org$": {
         "208.80.153.224": true,
         "185.15.58.224": true,
       },
-      // Reddit
+      "*w.wiki":{
+        "208.80.153.224": true,
+        "185.15.58.224": true,
+      },
+      //Reddit
       "*reddit.com": {
         "146.75.33.140": true,
       },
@@ -824,20 +801,6 @@
       },
       "*redditmedia.com": {
         "146.75.33.140": true,
-      },
-      // X/Twitter
-      // 从旧版吸收更精确的 x.com 正则
-      "^(.+\\.)?x\\.com$": {
-        "172.67.172.22": true,
-      },
-      "*twimg.com": {
-        "172.67.172.22": true,
-      },
-      "*twitter.com": {
-        "172.67.172.22": true,
-      },
-      "*t.co": {
-        "172.67.172.22": true,
       },
       //Steam
       "community.cloudflare.steamstatic.com": {
@@ -870,13 +833,26 @@
         "23.15.140.216": true,
         "104.79.200.218": true,
       },
-      "^(store|checkout).steampowered.com$": {
+      "^(store|checkout)\\.steampowered\\.com$": {
         "23.209.218.108": true,
         "184.31.230.122": true,
         "23.35.102.114": true,
         "104.83.198.104": true,
         "23.51.62.114": true,
         "23.55.98.103": true,
+      },
+      // X/Twitter
+      "^(.+\\.)?x\\.com$": {
+        "172.67.172.22": true
+      },
+      "*twimg.com": {
+        "172.67.172.22": true
+      },
+      "*twitter.com": {
+        "172.67.172.22": true
+      },
+      "*t.co": {
+        "172.67.172.22": true
       },
       //DuckDuckGo
       "external-content.duckduckgo.com": {
@@ -915,7 +891,7 @@
       "*.claude.ai": {
         "2a01:4f8:c2c:123f:64:5:a04f:680a": true,
       },
-      // Web Archive（从对方吸收：预设IP）
+      //Web Archive
       "web-static.archive.org": {
         "207.241.237.2": true,
       },
@@ -947,7 +923,6 @@
           "server": "tls://dns.bebasid.com",
           "sni": "baidu.com",
         },
-        // 修正：原 "sni": "cf" 非法，改为 baidu.com
         "cf-DoH": {
           "server": "https://cloudflare-dns.com/dns-query",
           "sni": "baidu.com",
@@ -962,7 +937,6 @@
           "server": "https://rubyfish.cn/dns-query",
         },
       },
-      // docker 在 mapping 与 familyMapping 均用 *docker* 宽匹配（DoH 查询本身不会误伤解析结果；控族也一刀切）
       mapping: {
         "*docker*": "cf-DoH",
         "*.xn--ngstr-lra8j.com": "bebasid",
@@ -997,8 +971,6 @@
         // 从旧版吸收：VSCode 扩展市场/资产 CDN，避免装扩展卡死
         "*.vsassets.io": "cf-DoT",
       },
-      // @since v2.0.2
-      // 与 mapping 对齐；docker 同样用 *docker* 宽匹配
       familyMapping: {
         "*docker*": "4",
         "*.xn--ngstr-lra8j.com": "6",
@@ -1034,7 +1006,7 @@
         "*.vsassets.io": "4",
       },
       speedTest: {
-        enabled: true, // GUI「IP测速」开关的初始值；缺省时开关显示为未勾选，但内核实际仍在测速
+        enabled: true,
         interval: 60000,
         hostnameList: [
           "google.com",
@@ -1055,24 +1027,6 @@
           "safe360"
         ],
       },
-      /*
-       * ECH（Encrypted Client Hello，RFC 9849）
-       *
-       * 通过DNS的 HTTPS(65) 记录中的 ech 参数（SvcParamKey=5）获取 ECHConfigList，
-       * 并在「代理 ➜ 源站」的上游TLS握手时使用ECH，使SNI对中间网络不可见。
-       *
-       * @param enabled 是否从DNS获取ECH参数，默认 true
-       * @param use 是否在上游TLS握手时真正使用ECH，默认 true（不可用时自动降级为普通TLS）
-       * @param domains 需要使用ECH的域名列表（支持通配符），默认为空表示不启用
-       * @param dns ECH域名专用的DNS名称（取值来自「DNS服务管理」中的DNS名称），默认空表示不指定
-       * @param publicName 共享ECH配置的来源域名，默认 cloudflare-ech.com（Cloudflare 的共享配置对所有 CF 站点通用）
-       * @param preSetIpDomains ECH域名中允许使用「预设IP」与「IP测速」结果的例外名单（默认空 = 全部忽略）
-       * @param cacheSize / emptyTtl / minTtl / maxTtl ECH参数缓存策略
-       * @param tryAllProviders 该域名映射的DNS未下发ech参数时，是否尝试其它DNS
-       * @param parallelDelay 并发查询多个DNS时，除第一个DNS外的其它DNS的延迟启动时间(ms)
-       *
-       * 注：domains 名单中的域名会强制忽略常规的 SNI 改写与预设IP等配置，并被自动拦截（无需再配置拦截器）。
-       */
       ech: {
         domains: [
           "*t.co",
@@ -1115,9 +1069,8 @@
         enabled: true,
         use: true,
         publicName: "cloudflare-ech.com",
-        // 从对方吸收：随配置下发共享 ECH 配置（base64）。
-        // 需要 ECH 解析器才能实时获取，部分网络会重置 TLS，因此随配置下发；
-        // Cloudflare 会轮换，请随配置更新一起替换。
+        // 共享 ECH 配置（base64）。需要 ECH 解析器才能实时获取，部分网络会重置 TLS，
+        // 因此随配置下发；Cloudflare 会轮换，请随配置更新一起替换。
         sharedConfig: "AEX+DQBBBAAgACD5ePjdqyD/98Ay87SkPKvxDV1OX57c8B6ad9YZLiBDbAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA=",
         cacheSize: 512,
         emptyTtl: 600000,
@@ -1126,7 +1079,6 @@
         tryAllProviders: true,
         parallelDelay: 200,
       },
-      // 以作者新版为准：NAT64 直连为内核正式支持功能，GUI 中有独立设置页，保持启用、不注释
       "nat64": {
         "enabled": true,
         "prefix": "",

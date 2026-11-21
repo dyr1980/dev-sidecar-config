@@ -7,8 +7,8 @@
     metaInfo: {
       // 元数据就放在这里了
       id: "official", // 配置id：id区分大小写，只能带有大小写字母、数字、点号与横杠，应当具有说明作用（所以不许用一串数字/乱码代替）
-      version: 202611121325, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
-      updateLog: "以官方配置为基线，吸收 gist/Docker/Web Archive/测速域名等增量；修正 steampowered 点号转义、Wikipedia 预设IP混入sni、gist 缺 verifyHost、akamai IP 前导空格等问题；补 cf-DoH 的 sni、docker 相关拦截与预设IP、DNS mapping/familyMapping、ECH sharedConfig 等；移除 hub.docker.com 的 sni:\"none\"，改由 *.docker.com 兜底。",
+      version: 202611192245, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
+        updateLog: "维基规则恢复证书校验：证书 SAN 覆盖 wikipedia/wikimedia/wikidata 等全部域名，移除 unVerifySsl",
       // dev-sidecar从2.0.2开始内置的配置是internal，这里是official
       // 第三方配置应使用Java风格id,即发布网站域名的倒序，但严禁使用com.example之类的烂大街id（com.example保留为示范用途）
       // 同理禁止使用com.github/com.gitee/com.gitcode/io.github等大概率托管多个配置的网站域名倒序
@@ -57,7 +57,7 @@
           },
           desc: "仓库内脚本，设置响应头Content-Type。作用：方便script拦截器直接使用，避免引起跨域问题和脚本内容限制问题。",
         },
-        ".*": {
+        ".*":{
           sni: "baidu.com",
         },
       },
@@ -213,27 +213,6 @@
           unVerifySsl: true,
         },
       },
-      "www.docker.com": {
-        ".*": {
-          sni: "www.docker.com", // 配置它自己是为了覆盖 *.docker.com 中的SNI配置，此配置优先级更高
-        },
-      },
-      "login.docker.com": {
-        ".*": {
-          sni: "login.docker.com", // 配置它自己是为了覆盖 *.docker.com 中的SNI配置，此配置优先级更高
-        },
-      },
-      "download.docker.com": {
-        ".*": {
-          sni: "download.docker.com", // 配置它自己是为了覆盖 *.docker.com 中的SNI配置，此配置优先级更高
-        },
-      },
-      // 已移除 hub.docker.com 的 sni:"none"，改由下方 *.docker.com 兜底
-      "*.docker.com": {
-        ".*": {
-          sni: "www.docker.com",
-        },
-      },
       // Microsoft
       "ms-sso.copilot.microsoft.com": {
         ".*": {
@@ -346,19 +325,18 @@
           unVerifySsl: true,
         }
       },
-      //Wikipedia
+      //Wikipedia：mediawiki.org 的 SNI 返回证书 SAN 覆盖 wikipedia/wikimedia/wikidata 等全部维基域名，
+      //按真实域名校验即可，不需要 unVerifySsl；只有证书对不上真实域名时才用 verifyHost。
       "^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions|wikibooks).org$": {
-        ".*": {
-          sni: "mediawiki.org",
-          unVerifySsl: true,
-        },
-      },
-      "*w.wiki":{
-        ".*": {
-          sni: "mediawiki.org",
-          unVerifySsl: true,
-        },
-      },
+				".*": {
+				  sni: "mediawiki.org",
+				},
+			},
+			"*w.wiki":{
+				".*": {
+				  sni: "mediawiki.org",
+				},
+			},
       //Reddit
       "*reddit.com": {
         ".*": {
@@ -405,11 +383,6 @@
         },
       },
       "^(store|checkout)\\.steampowered\\.com$": {
-        ".*": {
-          sni: "baidu.com",
-        },
-      },
-      "*.steampowered.com": {
         ".*": {
           sni: "baidu.com",
         },
@@ -573,24 +546,11 @@
         "20.200.245.247": true,
         "20.27.177.113": true,
         "20.205.243.166": true,
-        "20.26.156.215": false,
-        "20.87.245.0": false,
-        "4.237.22.38": false,
-        "20.201.28.151": false,
-        "140.82.113.3": false,
-        "140.82.114.4": false,
-        "140.82.116.3": false,
-        "140.82.116.4": false,
-        "140.82.121.3": false,
-        "140.82.121.4": false,
       },
       "gist.github.com": {
-        "20.27.177.113": true,
-        "20.200.245.247": true,
         "20.205.243.166": true,
         "140.82.121.3": true,
-        "140.82.116.3": true,
-        "140.82.116.4": true,
+        "20.27.177.113": true,
         "4.237.22.38": true,
       },
       "github.dev": {
@@ -614,26 +574,6 @@
         "185.199.108.133": true,
         "185.199.109.133": true,
         "185.199.110.133": true,
-      },
-      // Docker
-      "hub.docker.com": {
-        "144.34.172.106": true,
-        "69.63.207.139": false,
-        "47.236.233.96": false,
-        "54.156.14.194": null,
-        "54.208.73.48": null,
-        "100.29.167.200": null,
-        "44.221.37.199": null,
-        "52.44.227.212": null,
-        "54.156.140.159": null,
-      },
-      "sessions-bugsnag.docker.com": {
-        "54.156.14.194": true,
-        "54.208.73.48": true,
-        "100.29.167.200": true,
-        "44.221.37.199": null,
-        "52.44.227.212": null,
-        "54.156.140.159": null,
       },
       // Pixiv
       "i.pximg.net": {
@@ -701,6 +641,19 @@
           desc: "自动地区官方",
         },
       },
+      // "_google_backup":{
+      //   "8.137.102.117": flase, // 阿里云中转
+      //   "47.102.115.14":"true",
+      //   "194.87.31.227":"true",
+      //   "136.124.0.28":"true",
+      //   "136.124.0.29":"true",
+      //   "34.49.133.3":"true",
+      //   "142.251.189.206":"true",
+      //   "142.251.190.206":"true",
+      //   "172.217.204.206":"true",
+      //   "172.253.122.206":"true",
+      //   "38.180.33.93":"true"
+      // },
       // YouTube
       "*.youtube.com": {
         "8.137.102.117": false, // 阿里云中转
@@ -778,17 +731,17 @@
       },
       //Wikipedia
       "upload.wikimedia.org": {
-        "208.80.153.240": true,
-        "185.15.58.240": true,
-      },
-      "^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions|wikibooks).org$": {
-        "208.80.153.224": true,
-        "185.15.58.224": true,
-      },
-      "*w.wiki":{
-        "208.80.153.224": true,
-        "185.15.58.224": true,
-      },
+				"208.80.153.240": true,
+				"185.15.58.240": true,
+			},
+			"^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions).org$": {
+				"208.80.153.224": true,
+				"185.15.58.224": true,
+			},
+			"*w.wiki":{
+				"208.80.153.224": true,
+				"185.15.58.224": true,
+			},
       //Reddit
       "*reddit.com": {
         "146.75.33.140": true,
@@ -809,7 +762,7 @@
         "172.64.145.151": true,
       },
       "clientconfig.akamai.steamstatic.com": {
-        "23.208.12.191": true,
+        " 23.208.12.191": true,
         "23.32.91.19": true,
         "2.16.168.104": true,
         "2.16.168.109": true,
@@ -843,17 +796,17 @@
       },
       // X/Twitter
       "^(.+\\.)?x\\.com$": {
-        "172.67.172.22": true
-      },
-      "*twimg.com": {
-        "172.67.172.22": true
-      },
-      "*twitter.com": {
-        "172.67.172.22": true
-      },
-      "*t.co": {
-        "172.67.172.22": true
-      },
+				"172.67.172.22": true
+			},
+			"*twimg.com": {
+				"172.67.172.22": true
+			},
+			"*twitter.com": {
+				"172.67.172.22": true
+			},
+			"*t.co": {
+				"172.67.172.22": true
+			},
       //DuckDuckGo
       "external-content.duckduckgo.com": {
         "20.43.160.189": true,
@@ -869,6 +822,7 @@
       "*dropbox.com": {
         "162.125.248.18": true,
       },
+      
       //f-droid
       "forum.f-droid.org": {
         "37.218.242.53": true,
@@ -925,7 +879,7 @@
         },
         "cf-DoH": {
           "server": "https://cloudflare-dns.com/dns-query",
-          "sni": "baidu.com",
+          "sni": "cf",
         },
         "quad9-ip": {
           "server": "https://9.9.9.9/dns-query",
@@ -945,8 +899,6 @@
         "*.jetbrains.com": "cf-DoT",
         "*.azureedge.net": "cf-DoT",
         "*.stackoverflow.com": "cf-DoT",
-        "*.github.com": "cf-DoT",
-        "*github*.com": "cf-DoT",
         "*.github.io": "cf-DoT",
         "*.electronjs.org": "cf-DoT",
         "*.amazonaws.com": "cf-DoT",
@@ -956,7 +908,6 @@
         "img.shields.io": "cf-DoT",
         "*.vuepress.vuejs.org": "cf-DoT",
         "*.gh.docmirror.top": "cf-DoT",
-        "*.v2ex.com": "cf-DoT",
         "*.pypi.org": "cf-DoT",
         // Pixiv站点相关
         "*.pixiv.org": "cf-DoT",
@@ -964,13 +915,11 @@
         "*.onesignal.com": "cf-DoT",
         "*.iubenda.com": "cf-DoT",
         "*.brave.com": "cf-DoT",
-        "*duckduckgo.com": "cf-DoT",
-        // Gemini 图标 / Google API（bug #9）：用 quad9-ip 避开 DNS 污染
-        "*.gstatic.com": "quad9-ip",
-        "*.googleapis.com": "quad9-ip",
-        // 从旧版吸收：VSCode 扩展市场/资产 CDN，避免装扩展卡死
+        // VSCode 扩展市场/资产 CDN（gallerycdn.vsassets.io 等子域都在 vsassets.io 下），
+        // 加进默认 DNS 加速映射，否则 VSCode 装扩展会卡死（docmirror/dev-sidecar#666）。
         "*.vsassets.io": "cf-DoT",
       },
+      // @since v2.0.2
       familyMapping: {
         "*docker*": "4",
         "*.xn--ngstr-lra8j.com": "6",
@@ -990,7 +939,6 @@
         "img.shields.io": "4",
         "*.vuepress.vuejs.org": "4",
         "*.gh.docmirror.top": "4",
-        "*.v2ex.com": "4",
         "*.pypi.org": "4",
         // Pixiv站点相关
         "*.pixiv.org": "4",
@@ -999,41 +947,46 @@
         "*.iubenda.com": "4",
         "*.brave.com": "4",
         "*duckduckgo.com": "4",
-        // 对应上面 mapping 里的两条（值与既有条目一致，用字符串）
+        // 对应上面 mapping 里新增的两条（值与既有条目一致，用字符串）
         "*.gstatic.com": "4",
         "*.googleapis.com": "4",
-        // 与上面 dns.mapping 的 *.vsassets.io 对应
+        // 与上面 dns.mapping 的 *.vsassets.io 对应（值与既有条目一致）
         "*.vsassets.io": "4",
       },
       speedTest: {
-        enabled: true,
+        enabled: true, // GUI「IP测速」开关的初始值；缺省时开关显示为未勾选，但内核实际仍在测速
         interval: 60000,
         hostnameList: [
           "google.com",
           "github.com",
-          "zh.wikipedia.org",
-          "steamgames.com",
-          "epicgames-download1-1251447533.file.myqcloud.com",
-          "store.steampowered.com",
-          "community.akamai.steamstatic.com",
-          "cdn.akamai.steamstatic.com",
-          "steamcdn-a.akamaihd.net",
-          "store.akamai.steamstatic.com",
-          "steamcommunity.com",
-          "api.steampowered.com",
         ],
-        dnsProviders: [
-          "cf-DoT",
-          "safe360"
-        ],
+        dnsProviders: ["cf-DoT", "safe360"],
       },
+      /*
+       * ECH（Encrypted Client Hello，RFC 9849）
+       *
+       * 通过DNS的 HTTPS(65) 记录中的 ech 参数（SvcParamKey=5）获取 ECHConfigList，
+       * 并在「代理 ➜ 源站」的上游TLS握手时使用ECH，使SNI对中间网络不可见。
+       *
+       * @param enabled 是否从DNS获取ECH参数，默认 true
+       * @param use 是否在上游TLS握手时真正使用ECH，默认 true（不可用时自动降级为普通TLS）
+       * @param domains 需要使用ECH的域名列表（支持通配符），默认为空表示不启用
+       * @param dns ECH域名专用的DNS名称（取值来自「DNS服务管理」中的DNS名称），默认空表示不指定
+       * @param publicName 共享ECH配置的来源域名，默认 cloudflare-ech.com（Cloudflare 的共享配置对所有 CF 站点通用）
+       * @param preSetIpDomains ECH域名中允许使用「预设IP」与「IP测速」结果的例外名单（默认空 = 全部忽略）
+       * @param cacheSize / emptyTtl / minTtl / maxTtl ECH参数缓存策略
+       * @param tryAllProviders 该域名映射的DNS未下发ech参数时，是否尝试其它DNS
+       * @param parallelDelay 并发查询多个DNS时，除第一个DNS外的其它DNS的延迟启动时间(ms)
+       *
+       * 注：domains 名单中的域名会强制忽略常规的 SNI 改写与预设IP等配置，并被自动拦截（无需再配置拦截器）。
+       */
       ech: {
         domains: [
-          "*t.co",
-          "*twitter.com",
-          "*twimg.com",
-          "*sci-hub.pub",
-          "^(.+\\.)?x\\.com$",
+					"*t.co",
+					"*twitter.com",
+					"*twimg.com",
+					"*sci-hub.pub",
+					"^(.+\\.)?x\\.com$",
           "*matrix.org",
           "*mod.io",
           "*itch.io",
@@ -1043,35 +996,32 @@
           "*v2ex.com",
           "auth.docker.io",
           "hub.docker.com",
-          "*docker.com",
-          "*pixiv.net",
-          "pixiv.net",
-          "chatgpt.com",
+					"*pixiv.net",
           "*openai.com",
-          "*civitai.com",
+					"*chatgpt.com",
+					"*civitai.com",
           "*civitai.red",
-          "*.ldstatic.com",
-          "civitai.com",
-          "*.linux.do",
-          "*.greasyfork.org",
-          "greasyfork.org",
-          "*grok.com",
-          "*x.ai",
-        ],
-        preSetIpDomains: [
-          "*.ldstatic.com",
+					"*ldstatic.com",
+					"civitai.com",
+					"*linux.do",
+					"greasyfork.org",
+            "*grok.com",
+            "*x.ai",
+				],
+				preSetIpDomains: [
+					"*ldstatic.com",
           "*t.co",
-          "*twitter.com",
-          "*twimg.com",
-          "^(.+\\.)?x\\.com$",
-        ],
-        dns: "cf-DoH",
+					"*twitter.com",
+					"*twimg.com",
+					"^(.+\\.)?x\\.com$",
+  					],
+			  dns: "cf-DoH",
         enabled: true,
         use: true,
         publicName: "cloudflare-ech.com",
-        // 共享 ECH 配置（base64）。需要 ECH 解析器才能实时获取，部分网络会重置 TLS，
-        // 因此随配置下发；Cloudflare 会轮换，请随配置更新一起替换。
-        sharedConfig: "AEX+DQBBBAAgACD5ePjdqyD/98Ay87SkPKvxDV1OX57c8B6ad9YZLiBDbAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA=",
+          // 共享 ECH 配置（base64）。需要 ECH 解析器才能实时获取，部分网络会重置 TLS，
+          // 因此随配置下发；Cloudflare 会轮换，请随配置更新一起替换。
+          sharedConfig: "AEX+DQBBBAAgACD5ePjdqyD/98Ay87SkPKvxDV1OX57c8B6ad9YZLiBDbAAEAAEAAQASY2xvdWRmbGFyZS1lY2guY29tAAA=",
         cacheSize: 512,
         emptyTtl: 600000,
         minTtl: 60000,
@@ -1080,14 +1030,14 @@
         parallelDelay: 200,
       },
       "nat64": {
-        "enabled": true,
-        "prefix": "",
-        "domains": [
-          "*chatgpt.com",
+				"enabled": true,
+				"prefix": "",
+				"domains": [
+					"*chatgpt.com",
           "*openai.com",
-        ],
-        "dns": "cf-DoH"
-      },
+				],
+				"dns": "cf-DoH"
+			},
     },
     whiteList: {
       "*.icloud.com": true,
@@ -1199,7 +1149,6 @@
         "*.nodejs.org": true,
         "*.npmjs.com": true,
         "*.wikimedia.org": true,
-        "*.v2ex.com": true,
         "*.azureedge.net": true,
         "*.cloudfront.net": true,
         "*.bing.com": true,
@@ -1258,45 +1207,22 @@
       },
       DNS: {
         timeout: 3,
-        allow: [
-          "baidu.cn",
-          "taobao.com",
-          "www.gov.cn"
-        ],
-        block: [
-          "wikipedia.org",
-          "youtube.com",
-          "facebook.com"
-        ],
+        allow: ["baidu.cn", "taobao.com", "www.gov.cn"],
+        block: ["wikipedia.org", "youtube.com", "facebook.com"],
       },
       TCP: {
         timeout: 3,
         addrs: {
           IPv4: {
-            allow: [
-              "114.114.114.114",
-              "223.6.6.6"
-            ],
-            block: [
-              "8.8.8.8",
-              "1.1.1.1"
-            ],
+            allow: ["114.114.114.114", "223.6.6.6"],
+            block: ["8.8.8.8", "1.1.1.1"],
           },
           IPv6: {
-            allow: [
-              "2402:4e00::",
-              "2400:3200:baba::1"
-            ],
-            block: [
-              "2001:4860:4860::8888",
-              "2606:4700:4700::1111"
-            ],
+            allow: ["2402:4e00::", "2400:3200:baba::1"],
+            block: ["2001:4860:4860::8888", "2606:4700:4700::1111"],
           },
         },
-        ports: [
-          80,
-          443
-        ],
+        ports: [80, 443],
       },
       TLS: {
         timeout: 3,

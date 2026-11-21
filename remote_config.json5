@@ -7,8 +7,8 @@
     metaInfo: {
       // 元数据就放在这里了
       id: "official", // 配置id：id区分大小写，只能带有大小写字母、数字、点号与横杠，应当具有说明作用（所以不许用一串数字/乱码代替）
-      version: 202611121325, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
-        updateLog: "steampowered 规则转义点号（^(store|checkout)\\.steampowered\\.com$），避免匹配无关主机",
+      version: 202611192245, // 格式是GMT+8的开始编辑时间，固定位数为年月日+时分;一天有1440分钟，够用了；这就是个number,可以用来比较，别加引号
+        updateLog: "维基规则恢复证书校验：证书 SAN 覆盖 wikipedia/wikimedia/wikidata 等全部域名，移除 unVerifySsl",
       // dev-sidecar从2.0.2开始内置的配置是internal，这里是official
       // 第三方配置应使用Java风格id,即发布网站域名的倒序，但严禁使用com.example之类的烂大街id（com.example保留为示范用途）
       // 同理禁止使用com.github/com.gitee/com.gitcode/io.github等大概率托管多个配置的网站域名倒序
@@ -325,17 +325,16 @@
           unVerifySsl: true,
         }
       },
-      //Wikipedia
+      //Wikipedia：mediawiki.org 的 SNI 返回证书 SAN 覆盖 wikipedia/wikimedia/wikidata 等全部维基域名，
+      //按真实域名校验即可，不需要 unVerifySsl；只有证书对不上真实域名时才用 verifyHost。
       "^.*(wikipedia|wikimedia|wikinews|wiktionary|wikiversity|wikidata|wikiquote|wikivoyage|wikifunctions|wikibooks).org$": {
 				".*": {
 				  sni: "mediawiki.org",
-				  unVerifySsl: true,
 				},
 			},
 			"*w.wiki":{
 				".*": {
 				  sni: "mediawiki.org",
-				  unVerifySsl: true,
 				},
 			},
       //Reddit
